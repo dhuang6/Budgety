@@ -182,9 +182,69 @@ var UIController = (function(){//ui controller
       		expensesLabel: '.budget__expenses--value',
       		percentageLabel: '.budget__expenses--percentage',
       		container: '.container',
-      		expensesPercLabel: '.item__percentage'
+      		expensesPercLabel: '.item__percentage',
+      		dateLabel: '.budget__title--month'
       };
+      	var formatNumber = function(num, type){
+      		var numSplit, int, dec, type;	
+      		/*
+		      + or - before number based on inc or exp
+		      exactly 2 decimal pts
+		      comma separating the thousands.
+		      ex:
 
+		      2310.4567 -> + 2,310.46
+		      2000 -> 2,000.00
+
+		      toFixed changes a num to a string the num in () = how many decimals
+      		*/
+
+      		//overwriting the number as it's absolute value.
+      		num = Math.abs(num);
+
+      		//using the obj method toFixed() see above for how it works.
+      		num = num.toFixed(2);
+
+      		//split the string into 2310 and 46
+      		numSplit = num.split('.');
+      		
+      		//adding in the comma if the num is greater than 3
+      		int = numSplit[0];
+      		if(int.length > 3 ){
+      			/*
+      			say the number is 5
+      			int.substr(0, int.length - 3) start at index 0 
+      			5 - 3 = 2
+
+      			ex: 23674
+
+
+      			int.substr(1,3) start at position 1 read 3 num.
+
+      			so the comman gets added between position 0 and 1
+      			*/
+      			//first number is starting second is the number of elements. so int.substr(0 , int.length - 3 ) you start at 0 and read 2 elements
+      			int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3); //input 2310 output = 2,310
+
+      		}
+
+      		//setting up the + / - infront of num.
+      		dec = numSplit[1];
+      		//tertiary statement
+      		type === 'exp' ? sign = '-' : sign = '+';
+      		//type is either exp or put the + then put in the decimal
+      		return (type  === 'exp' ?  '-' : '+' ) + ' ' + int + '.' + dec;
+
+
+      	};
+
+         //we are using this as a callback function for reuseability. 
+      	var	nodeListForEach = function(list, callback){
+      			for(let i = 0; i < list.length; i++){
+
+      				callback(list[i], i);
+      			}
+      		};
 
 
       return {//holds the value of the exp / inc item within the object.
@@ -215,9 +275,8 @@ var UIController = (function(){//ui controller
                                 
                 //replace the placeholder text with actual data
                 	newHtml = html.replace('%id%', obj.id);
-
-                	newHtml = newHtml.replace('%description%', obj.description);
-                	newHtml = newHtml.replace('%value%', obj.value);
+					newHtml = newHtml.replace('%description%', obj.description);
+                	newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
       			//insert html into dom after the last item but in the same container as the previous entry.
       			document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
       	},
@@ -247,9 +306,14 @@ var UIController = (function(){//ui controller
       	},
       	//replacing the default text on the webpage with info entered by user.
       	displayBudget: function(obj){
-      		document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
-      		document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
-      		document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
+      		var type; 
+
+      		//because type isn't defined here we write a tertiary statement
+      		obj.budget > 0 ? type = 'inc' : type = 'exp';
+
+      		document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, type);
+      		document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
+      		document.querySelector(DOMstrings.expensesLabel).textContent = formatNumber(obj.totalExp, 'exp');
       		
 
       		if(obj.percentage > 0 ){
@@ -262,19 +326,12 @@ var UIController = (function(){//ui controller
       	},
 
       	displayPercentages: function(percentages){
-      		var fields, nodeListForEach;
+      		var fields;
 
       		//returns a node list.
       		fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
 
-      		//list and a callback
-      		nodeListForEach = function(list, callback){
-      			for(let i = 0; i < list.length; i++){
-
-      				callback(list[i], i);
-      			}
-      		};
-
+      		//we call nodeList function with the callback function from the first function.
       		nodeListForEach(fields, function(current, index){
       			if(percentages[index] > 0){
       				current.textContent = percentages[index] + '%';
@@ -283,10 +340,44 @@ var UIController = (function(){//ui controller
       			}
       		});
       	},
+      	//date object constructor 
+      	displayMonth: function(){
+      		var now,months, year, month;
+      		//returns the date of today.
+
+      		now = new Date();
+
+      		//returns the year and today's date.
+      		year = now.getFullYear();
+
+      		months = ['January', 'Feburary', 'March', 'April', 'May','June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      		month = now.getMonth();
+
+      		document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' ' +  year;
+
+      	},
+
+      	changedType: function(){
+      		var fields;
+      		//selecting the dom elements to change the color red when we add an expense. 
+      		fields = document.querySelectorAll(
+      		DOMstrings.inputType + ',' +
+      		DOMstrings.inputDescription + ',' +
+      		DOMstrings.inputValue
+			);
+
+      		//changes the color of the input when we switch between exp and inc 
+      		nodeListForEach(fields, function(cur){
+      			cur.classList.toggle('red-focus');
+      		});
+
+      		document.querySelector(DOMstrings.inputBtn).classList.toggle('red');
+      	},
+
+			getDOMstrings: function(){
+        	    return DOMstrings;
+      	}
         
-        getDOMstrings: function(){
-        	return DOMstrings;
-        }
 
 
       };
@@ -307,7 +398,9 @@ var controller = (function(budgetCtrl, UICtrl){//global app controller
   			}
         });
          //event listener to allow for removing of items from budget.
-         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);      
+         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
+
+         document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType);      
 
 	};
 		//this will do the mathematics involved.
@@ -396,6 +489,7 @@ var controller = (function(budgetCtrl, UICtrl){//global app controller
 		return {
 			init: function(){
 				console.log('app has started');
+				UICtrl.displayMonth();
 				//this allows us to load the application with everything set to 0!
 				UICtrl.displayBudget(
 						{
